@@ -10,7 +10,6 @@ using Volo.Abp.OpenIddict.EntityFrameworkCore;
 using Volo.Abp.PermissionManagement.EntityFrameworkCore;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
-using mini_ecommerce_backend.Entities.Books;
 using mini_ecommerce_backend.Entities.Products;
 using mini_ecommerce_backend.Entities.Orders;
 
@@ -18,7 +17,6 @@ namespace mini_ecommerce_backend.Data;
 
 public class mini_ecommerce_backendDbContext : AbpDbContext<mini_ecommerce_backendDbContext>
 {
-    public DbSet<Book> Books { get; set; }
     public DbSet<Product> Products { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
@@ -46,14 +44,6 @@ public class mini_ecommerce_backendDbContext : AbpDbContext<mini_ecommerce_backe
         builder.ConfigureIdentity();
         builder.ConfigureOpenIddict();
         builder.ConfigureTenantManagement();
-        
-        builder.Entity<Book>(b =>
-        {
-            b.ToTable(DbTablePrefix + "Books",
-                DbSchema);
-            b.ConfigureByConvention(); //auto configure for the base class props
-            b.Property(x => x.Name).IsRequired().HasMaxLength(128);
-        });
 
         /* Configure your own entities here */
         builder.Entity<Product>(b =>
