@@ -1,0 +1,245 @@
+@page "/orders/new"
+@using Microsoft.AspNetCore.Authorization
+@using mini_ecommerce_backend.Services.Orders
+@using mini_ecommerce_backend.Services.Products
+@using mini_ecommerce_backend.Services.Dtos.Orders
+@using mini_ecommerce_backend.Services.Dtos.Products
+@attribute [AllowAnonymous]
+@inherits mini_ecommerce_backendComponentBase
+
+@inject IOrderAppService OrderAppService
+@inject IProductAppService ProductAppService
+
+<Card>
+    <CardHeader>
+        <CardTitle>Create Order</CardTitle>
+    </CardHeader>
+    <CardBody>
+        @if (!StatusMessage.IsNullOrWhiteSpace())
+        {
+            <Alert Color="(IsError ? Color.Danger : Color.Success)">
+                @StatusMessage
+            </Alert>
+        }
+
+        <Validations @ref="ValidationsRef" Model="Model" ValidateOnLoad="false">
+            <Validation>
+                <Field>
+                    <FieldLabel>Customer Name</FieldLabel>
+                    <TextInput @bind-Value="Model.CustomerName" />
+                </Field>
+            </Validation>
+            <Validation>
+                <Field>
+                    <FieldLabel>Customer Email</FieldLabel>
+                    <TextInput @bind-Value="Model.CustomerEmail" />
+                </Field>
+            </Validation>
+        </Validations>
+
+        <hr />
+
+        @if (Products == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <DataGrid TItem="OrderItemRow"
+                      Data="Rows"
+                      ShowPager="false">
+                <DataGridColumns>
+                    <DataGridColumn TItem="OrderItemRow" Caption="Product">
+                        <DisplayTemplate>
+                            <Select TValue="Guid" Value="context.Item.ProductId" ValueChanged="(Guid v) => OnProductChanged(context.Item, v)">
+                                <SelectItem TValue="Guid" Value="Guid.Empty">Select...</SelectItem>
+                                @foreach (var p in Products)
+                                {
+                                    <SelectItem TValue="Guid" Value="p.Id">@p.Name</SelectItem>
+                                }
+                            </Select>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="OrderItemRow" Caption="Price">
+                        <DisplayTemplate>
+                            @context.Item.UnitPrice
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="OrderItemRow" Caption="Available">
+                        <DisplayTemplate>
+                            @context.Item.AvailableQuantity
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="OrderItemRow" Caption="Quantity">
+                        <DisplayTemplate>
+                            <NumericInput TValue="int" Value="context.Item.Quantity" ValueChanged="(int v) => OnQuantityChanged(context.Item, v)" Min="1" />
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="OrderItemRow" Caption="Total">
+                        <DisplayTemplate>
+                            @(context.Item.UnitPrice * context.Item.Quantity)
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="OrderItemRow" Caption="">
+                        <DisplayTemplate>
+                            <Button Color="Color.Danger" Size="Size.Small" Clicked="() => RemoveRow(context.Item)">Remove</Button>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                </DataGridColumns>
+            </DataGrid>
+
+            <div class="mt-3">
+                <Button Color="Color.Secondary" Clicked="AddRow">Add Item</Button>
+            </div>
+
+            <div class="mt-4">
+                <div>Items count: @TotalItems</div>
+                <div>Subtotal: @Subtotal</div>
+                <div>Discount: @DiscountRate.ToString("P0")</div>
+                <div>Total: @Total</div>
+            </div>
+
+            <div class="mt-4">
+                <Button Color="Color.Primary" Disabled="IsSubmitting" Clicked="SubmitAsync">Create Order</Button>
+            </div>
+
+            @if (CreatedOrder != null)
+            {
+                <hr />
+                <h5>Created Order</h5>
+                <div>Order Id: @CreatedOrder.Id</div>
+                <div>Total: @CreatedOrder.Total</div>
+            }
+        }
+    </CardBody>
+</Card>
+
+@code {
+    private Validations ValidationsRef;
+    private CreateOrderDto Model { get; set; } = new();
+
+    private List<ProductLookupDto> Products { get; set; }
+    private List<OrderItemRow> Rows { get; set; } = new();
+
+    private bool IsSubmitting { get; set; }
+    private OrderDto CreatedOrder { get; set; }
+
+    private string StatusMessage { get; set; }
+    private bool IsError { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var lookup = await ProductAppService.GetLookupAsync();
+        Products = lookup.Items.ToList();
+        await AddRow();
+    }
+
+    private Task AddRow()
+    {
+        Rows.Add(new OrderItemRow());
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task RemoveRow(OrderItemRow row)
+    {
+        Rows.Remove(row);
+        if (Rows.Count == 0)
+        {
+            Rows.Add(new OrderItemRow());
+        }
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void OnProductChanged(OrderItemRow row, Guid productId)
+    {
+        row.ProductId = productId;
+
+        var p = Products.FirstOrDefault(x => x.Id == row.ProductId);
+        if (p == null)
+        {
+            row.UnitPrice = 0;
+            row.AvailableQuantity = 0;
+            StateHasChanged();
+            return;
+        }
+
+        row.UnitPrice = p.Price;
+        row.AvailableQuantity = p.AvailableQuantity;
+        if (row.Quantity <= 0)
+        {
+            row.Quantity = 1;
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnQuantityChanged(OrderItemRow row, int quantity)
+    {
+        row.Quantity = Math.Max(1, quantity);
+        StateHasChanged();
+    }
+
+    private int TotalItems => Rows.Where(r => r.ProductId != Guid.Empty).Sum(r => r.Quantity);
+    private decimal Subtotal => Rows.Where(r => r.ProductId != Guid.Empty).Sum(r => r.UnitPrice * r.Quantity);
+    private decimal DiscountRate => TotalItems >= 5 ? 0.10m : (TotalItems >= 2 ? 0.05m : 0m);
+    private decimal Total => Subtotal - Math.Round(Subtotal * DiscountRate, 2, MidpointRounding.AwayFromZero);
+
+    private async Task SubmitAsync()
+    {
+        StatusMessage = null;
+        IsError = false;
+
+        var isValid = await ValidationsRef.ValidateAll();
+        if (!isValid)
+        {
+            return;
+        }
+
+        var items = Rows
+            .Where(r => r.ProductId != Guid.Empty)
+            .GroupBy(r => r.ProductId)
+            .Select(g => new CreateOrderItemDto
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToList();
+
+        if (items.Count == 0)
+        {
+            StatusMessage = "Add at least one item";
+            IsError = true;
+            return;
+        }
+
+        Model.Items = items;
+
+        try
+        {
+            IsSubmitting = true;
+            CreatedOrder = await OrderAppService.CreateAsync(Model);
+            StatusMessage = "Order created";
+            Products = (await ProductAppService.GetLookupAsync()).Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            IsError = true;
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private class OrderItemRow
+    {
+        public Guid ProductId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public int AvailableQuantity { get; set; }
+    }
+}

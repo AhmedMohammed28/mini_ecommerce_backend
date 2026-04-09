@@ -97,6 +97,16 @@ public class mini_ecommerce_backendMenuContributor : IMenuContributor
             )
         );
 
+        context.Menu.AddItem(
+            new ApplicationMenuItem(
+                "Orders.New",
+                "Create Order",
+                url: "/orders/new",
+                icon: "fa fa-shopping-cart",
+                order: 3
+            )
+        );
+
         return Task.CompletedTask;
     }
 }

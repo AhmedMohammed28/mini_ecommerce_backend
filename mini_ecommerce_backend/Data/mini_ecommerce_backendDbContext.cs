@@ -12,6 +12,7 @@ using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
 using mini_ecommerce_backend.Entities.Books;
 using mini_ecommerce_backend.Entities.Products;
+using mini_ecommerce_backend.Entities.Orders;
 
 namespace mini_ecommerce_backend.Data;
 
@@ -19,7 +20,9 @@ public class mini_ecommerce_backendDbContext : AbpDbContext<mini_ecommerce_backe
 {
     public DbSet<Book> Books { get; set; }
     public DbSet<Product> Products { get; set; }
-    
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderItem> OrderItems { get; set; }
+
     public const string DbTablePrefix = "App";
     public const string DbSchema = null;
 
@@ -66,6 +69,32 @@ public class mini_ecommerce_backendDbContext : AbpDbContext<mini_ecommerce_backe
                     "[Price] > 0 AND [Quantity] >= 0"
                 );
             });
+        });
+
+        builder.Entity<Order>(b =>
+        {
+            b.ToTable(DbTablePrefix + "Orders", DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.CustomerName).IsRequired().HasMaxLength(128);
+            b.Property(x => x.CustomerEmail).IsRequired().HasMaxLength(256);
+
+            b.HasMany(x => x.Items)
+                .WithOne()
+                .HasForeignKey(x => x.OrderId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<OrderItem>(b =>
+        {
+            b.ToTable(DbTablePrefix + "OrderItems", DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.ProductName).IsRequired().HasMaxLength(256);
+            b.Property(x => x.UnitPrice).IsRequired();
+            b.Property(x => x.Quantity).IsRequired();
+
+            b.HasIndex(x => x.OrderId);
+            b.HasIndex(x => x.ProductId);
         });
     }
 }
