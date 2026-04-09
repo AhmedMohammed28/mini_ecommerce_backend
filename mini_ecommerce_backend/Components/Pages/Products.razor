@@ -1,0 +1,72 @@
+﻿@page "/products"
+@using Microsoft.AspNetCore.Authorization
+@using mini_ecommerce_backend.Services.Products
+@using mini_ecommerce_backend.Services.Dtos.Products
+@using Volo.Abp.Application.Dtos
+@using Volo.Abp.AspNetCore.Components.Web
+@attribute [AllowAnonymous]
+@inherits mini_ecommerce_backendComponentBase
+
+@inject IProductAppService ProductAppService
+
+<Card>
+    <CardHeader>
+        <Row Class="justify-content-between">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <CardTitle>Products</CardTitle>
+            </Column>
+        </Row>
+    </CardHeader>
+    <CardBody>
+        <DataGrid TItem="ProductDto"
+                  Data="Items"
+                  ReadData="OnDataGridReadAsync"
+                  Page="CurrentPage"
+                  TotalItems="TotalCount"
+                  ShowPager="true"
+                  PageSize="PageSize">
+            <DataGridColumns>
+                <DataGridColumn TItem="ProductDto"
+                                Field="@nameof(ProductDto.Name)"
+                                Caption="Name" />
+                <DataGridColumn TItem="ProductDto"
+                                Field="@nameof(ProductDto.Price)"
+                                Caption="Price" />
+                <DataGridColumn TItem="ProductDto"
+                                Field="@nameof(ProductDto.Quantity)"
+                                Caption="Quantity" />
+            </DataGridColumns>
+        </DataGrid>
+    </CardBody>
+</Card>
+
+@code {
+    private IReadOnlyList<ProductDto> Items { get; set; } = Array.Empty<ProductDto>();
+    private int TotalCount { get; set; }
+    private int CurrentPage { get; set; } = 1;
+    private int PageSize { get; set; } = LimitedResultRequestDto.DefaultMaxResultCount;
+
+    private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<ProductDto> e)
+    {
+        CurrentPage = e.Page;
+        PageSize = e.PageSize;
+
+        var sortedCol = e.Columns?.FirstOrDefault(c => c.SortDirection != default);
+        var sortingField = sortedCol?.Field;
+        var sortingDir = sortedCol?.SortDirection;
+
+        var sorting = sortingField.IsNullOrWhiteSpace()
+            ? nameof(ProductDto.Name)
+            : sortingField + (sortingDir == SortDirection.Descending ? " DESC" : "");
+
+        var result = await ProductAppService.GetListAsync(new PagedAndSortedResultRequestDto
+        {
+            SkipCount = (CurrentPage - 1) * PageSize,
+            MaxResultCount = PageSize,
+            Sorting = sorting
+        });
+
+        Items = result.Items;
+        TotalCount = (int)result.TotalCount;
+    }
+}
