@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 using mini_ecommerce_backend.Data;
@@ -12,9 +13,11 @@ using mini_ecommerce_backend.Data;
 namespace mini_ecommerce_backend.Migrations
 {
     [DbContext(typeof(mini_ecommerce_backendDbContext))]
-    partial class mini_ecommerce_backendDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260409062046_AddOrderTables")]
+    partial class AddOrderTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
