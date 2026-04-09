@@ -59,5 +59,21 @@ namespace mini_ecommerce_backend.Services.Products
                 }).ToList()
             );
         }
+
+        public async Task<ListResultDto<ProductLookupDto>> GetLookupAsync()
+        {
+            var queryable = await _productRepository.GetQueryableAsync();
+            var items = await AsyncExecuter.ToListAsync(queryable.OrderBy(x => x.Name));
+
+            return new ListResultDto<ProductLookupDto>(
+                items.Select(p => new ProductLookupDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price,
+                    AvailableQuantity = p.Quantity
+                }).ToList()
+            );
+        }
     }
 }

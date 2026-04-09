@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Volo.Abp.Domain.Entities.Auditing;
 
 
@@ -33,6 +33,16 @@ namespace mini_ecommerce_backend.Entities.Products
 
             Price = price;
         }
+        public void DecreaseQuantity(int amount)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Amount must be greater than zero");
+            if (Quantity < amount)
+                throw new ArgumentException($"Insufficient stock. Available: {Quantity}, Requested: {amount}");
+
+            Quantity -= amount;
+        }
+
         private void SetName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))

@@ -8,5 +8,6 @@ namespace mini_ecommerce_backend.Services.Products
     {
         Task<ProductDto> CreateAsync(CreateProductDto input);
         Task<PagedResultDto<ProductDto>> GetListAsync(PagedAndSortedResultRequestDto input);
+        Task<ListResultDto<ProductLookupDto>> GetLookupAsync();
     }
 }
