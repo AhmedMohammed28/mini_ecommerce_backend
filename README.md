@@ -1,80 +1,156 @@
 # mini_ecommerce_backend
 
-## About this solution
+A minimal single-layer e-commerce backend built with the [ABP Framework](https://abp.io). It provides product management and order creation with automatic discount calculation, served via a Blazor Server UI.
 
-This is a minimalist, non-layered startup solution with the ABP Framework. All the fundamental ABP modules are already installed. Check the [Application (Single Layer) Startup Template](https://abp.io/docs/latest/solution-templates/application-single-layer) documentation for more info.
+---
 
-### Pre-requirements
+## Features
 
-* [.NET10.0+ SDK](https://dotnet.microsoft.com/download/dotnet)
-* [Node v18 or 20](https://nodejs.org/en)
+### 🛍️ Products
+- List products with name, price, and available stock
+- Create new products with price and quantity validation
+- Stock is automatically decremented when an order is placed
 
-### Configurations
+### 📦 Orders
+- Create orders by selecting one or more products and quantities
+- Automatic discount applied based on total item count:
+  | Total Items | Discount |
+  |---|---|
+  | 1 | 0% |
+  | 2–4 | 5% |
+  | 5+ | 10% |
+- Displays subtotal, discount rate, and final total
+- Stock validation — prevents ordering more than what is available
 
-The solution comes with a default configuration that works out of the box. However, you may consider to change the following configuration before running your solution:
+---
 
-* Check the `ConnectionStrings` in `appsettings.json` file under the `mini_ecommerce_backend` project and change it if you need.
+## Domain Model
 
-### Solution structure
+```
+Product
+  - Id (Guid)
+  - Name (string)
+  - Price (decimal)
+  - Quantity (int)  ← decremented on order
 
-This is a single-layer application that consists of the following projects:
+Order
+  - Id (Guid)
+  - CustomerName (string)
+  - CustomerEmail (string)
+  - Items → OrderItem[]
 
-* `mini_ecommerce_backend`: ASP.NET Core Blazor Server application that contains all the application logic.
-
-## Before running the application
-
-### Generating a Signing Certificate
-
-In the production environment, you need to use a production signing certificate. ABP Framework sets up signing and encryption certificates in your application and expects an `openiddict.pfx` file in your application.
-
-This certificate is already generated when you created the solution, so most of the time you don't need to generate it yourself. However, if you need to generate a certificate, you can use the following command:
-
-```bash
-dotnet dev-certs https -v -ep openiddict.pfx -p a323e97a-bb81-40b9-8713-ccbc97eefa6d
+OrderItem
+  - ProductId, ProductName
+  - UnitPrice, Quantity
 ```
 
-> `a323e97a-bb81-40b9-8713-ccbc97eefa6d` is the password of the certificate, you can change it to any password you want.
+---
 
-It is recommended to use **two** RSA certificates, distinct from the certificate(s) used for HTTPS: one for encryption, one for signing.
+## Project Structure
 
-For more information, please refer to: [OpenIddict Certificate Configuration](https://documentation.openiddict.com/configuration/encryption-and-signing-credentials.html#registering-a-certificate-recommended-for-production-ready-scenarios)
+Single-layer ABP application under `mini_ecommerce_backend/`:
 
-> Also, see the [Configuring OpenIddict](https://abp.io/docs/latest/Deployment/Configuring-OpenIddict#production-environment) documentation for more information.
+```
+Entities/
+  Products/Product.cs
+  Orders/Order.cs, OrderItem.cs
+Services/
+  Products/ProductAppService.cs
+  Orders/OrderAppService.cs
+  Dtos/...
+Components/Pages/
+  Products.razor       ← product list
+  CreateOrder.razor    ← order creation form
+Data/
+  mini_ecommerce_backendDbContext.cs
+  BookStoreDataSeederContributor.cs  ← seeds sample products
+Migrations/           ← EF Core migrations
+```
 
-### Install Client-Side libraries
+---
 
-Run the following command in your solution directory. This step is automatically done when you create a new solution, if you didn't especially disabled it. However, you should run it yourself if you have first cloned this solution from your source control, or added a new client-side package dependency to your solution.
+## Pre-requirements
+
+- [.NET 10.0+ SDK](https://dotnet.microsoft.com/download/dotnet)
+- [Node v18 or 20](https://nodejs.org/en)
+- SQL Server (configured in `appsettings.json`)
+
+---
+
+## Getting Started
+
+### 1. Configure the database
+
+Edit `ConnectionStrings` in `mini_ecommerce_backend/appsettings.json`:
+
+```json
+"ConnectionStrings": {
+  "Default": "Server=localhost;Database=mini_ecommerce_backend;..."
+}
+```
+
+### 2. Apply migrations
+
+```bash
+dotnet ef database update --project mini_ecommerce_backend
+```
+
+Or use the provided script:
+
+```powershell
+.\migrate-database.ps1
+```
+
+### 3. Install client-side libraries
 
 ```bash
 abp install-libs
 ```
 
-> This command installs all NPM packages for MVC/Razor Pages and Blazor Server UIs and this command is already run by the ABP CLI, so most of the time you don't need to run this command manually.
+### 4. Run the application
 
-## Deploying the application
+```bash
+cd mini_ecommerce_backend
+dotnet run
+```
 
-Deploying an ABP application follows the same process as deploying any .NET or ASP.NET Core application. However, there are important considerations to keep in mind. For detailed guidance, refer to ABP's [deployment documentation](https://abp.io/docs/latest/Deployment/Index).
+The app seeds sample products automatically on first run:
+- **Laptop** — $1,500 × 10 units
+- **Mouse** — $25 × 100 units
 
-### How to deploy on Docker
+---
 
-The application provides the related `Dockerfiles` and `docker-compose` file with scripts. You can build the docker images and run them using docker-compose. The necessary database, DbMigrator, and the application will be running on docker with health checks in an isolated docker network.
+## Generating an OpenIddict Signing Certificate
 
-#### Creating the Docker images
+A certificate (`openiddict.pfx`) is included for development. To regenerate it:
 
-Navigate to [etc/build](./etc/build) folder and run the `build-images-locally.ps1` script. You can examine the script to set **image tag** for your images. It is `latest` by default.
+```bash
+dotnet dev-certs https -v -ep openiddict.pfx -p a323e97a-bb81-40b9-8713-ccbc97eefa6d
+```
 
-#### Running the Docker images using Docker-Compose
+For production, use two separate RSA certificates (one for signing, one for encryption). See [OpenIddict Certificate Configuration](https://documentation.openiddict.com/configuration/encryption-and-signing-credentials.html).
 
-Navigate to [etc/docker](./etc/docker) folder and run the `run-docker.ps1` script. The script will generate developer certificates (if it doesn't exist already) with `dotnet dev-certs` command to use HTTPS. Then, the script runs the provided docker-compose file on detached mode.
+---
 
-> Not: Developer certificate is only valid for **localhost** domain. If you want to deploy to a real DNS in a production environment, use LetsEncrypt or similar tools.
+## Deploying with Docker
 
-#### Stopping the Docker containers
+```powershell
+# Build images
+.\etc\build\build-images-locally.ps1
 
-Navigate to [etc/docker](./etc/docker) folder and run the `stop-docker.ps1` script. The script stops and removes the running containers.
+# Start containers
+.\etc\docker\run-docker.ps1
 
-### Additional resources
+# Stop containers
+.\etc\docker\stop-docker.ps1
+```
 
-You can see the following resources to learn more about your solution and the ABP Framework:
+> Developer certificates are only valid for `localhost`. Use Let's Encrypt or similar for production DNS.
 
-* [Application (Single Layer) Startup Template](https://abp.io/docs/latest/solution-templates/application-single-layer)
+---
+
+## Additional Resources
+
+- [ABP Framework Docs](https://abp.io/docs/latest)
+- [ABP Single Layer Template](https://abp.io/docs/latest/solution-templates/application-single-layer)
+- [ABP Deployment Guide](https://abp.io/docs/latest/Deployment/Index)
